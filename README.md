@@ -17,20 +17,37 @@ This test uses [`wasmtime`](https://github.com/bytecodealliance/wasmtime). You c
 curl https://wasmtime.dev/install.sh -sSf | bash
 ```
 
+Lastly, the container tests use `docker` and `podman`, which you can install through your system's package manager.
+
 ## Setup
 
+Compile the project to the various targets:
+
 ```bash
-cargo build -r --target x86_64-unknown-linux-musl && docker build -t dockerwasm .
+cargo build -r --target x86_64-unknown-linux-musl
 cargo build -r --target wasm32-wasi
 cargo build -r
 ```
 
+Build images:
+
+```bash
+docker build -t dockerwasm .
+podman build -t dockerwasm .
+```
+
 ## Running
 
-Run release:
+Run native:
 
 ```bash
 cat /etc/dictionaries-common/words | target/release/dockerwasm
+```
+
+Run WASM:
+
+```bash
+cat /etc/dictionaries-common/words | wasmtime target/wasm32-wasi/release/dockerwasm.wasm
 ```
 
 Run Docker (simple):
@@ -45,10 +62,16 @@ Run Docker (host network):
 cat /etc/dictionaries-common/words | docker run --net=host --rm -i dockerwasm
 ```
 
-Run WASM:
+Run Podman (simple):
 
 ```bash
-cat /etc/dictionaries-common/words | wasmtime target/wasm32-wasi/release/dockerwasm.wasm
+cat /etc/dictionaries-common/words | podman run --rm -i dockerwasm
+```
+
+Run Podman (host network):
+
+```bash
+cat /etc/dictionaries-common/words | podman run --net=host --rm -i dockerwasm
 ```
 
 All of the above should return 0 and stdout should be "234937\n".
@@ -59,9 +82,12 @@ For benchmarking, I've used [`hyperfine`](https://github.com/sharkdp/hyperfine).
 
 | Command | Mean [ms] | Min [ms] | Max [ms] | Relative |
 |:---|---:|---:|---:|---:|
-| `cat /etc/dictionaries-common/words \| target/release/dockerwasm` | 6.4 ± 0.4 | 5.9 | 8.9 | 1.00 |
-| `cat /etc/dictionaries-common/words \| wasmtime target/wasm32-wasi/release/dockerwasm.wasm` | 33.6 ± 0.7 | 32.8 | 36.0 | 5.25 ± 0.32 |
-| `cat /etc/dictionaries-common/words \| docker run --net=host --rm -i dockerwasm` | 352.7 ± 32.8 | 308.2 | 422.2 | 55.12 ± 6.00 |
-| `cat /etc/dictionaries-common/words \| docker run --rm -i dockerwasm` | 644.1 ± 44.8 | 584.9 | 698.9 | 100.67 ± 9.04 |
+| `cat /etc/dictionaries-common/words \| target/release/dockerwasm` | 5.9 ± 0.3 | 5.4 | 6.8 | 1.00 |
+| `cat /etc/dictionaries-common/words \| wasmtime target/wasm32-wasi/release/dockerwasm.wasm` | 33.6 ± 1.3 | 32.1 | 38.4 | 5.67 ± 0.33 |
+| `cat /etc/dictionaries-common/words \| podman run --net=host --rm -i dockerwasm` | 278.2 ± 22.5 | 245.1 | 308.3 | 46.99 ± 4.31 |
+| `cat /etc/dictionaries-common/words \| podman run --rm -i dockerwasm` | 305.0 ± 44.2 | 240.9 | 385.9 | 51.52 ± 7.80 |
+| `cat /etc/dictionaries-common/words \| docker run --net=host --rm -i dockerwasm` | 363.6 ± 26.6 | 327.2 | 416.9 | 61.41 ± 5.23 |
+| `cat /etc/dictionaries-common/words \| docker run --rm -i dockerwasm` | 645.6 ± 51.6 | 578.6 | 757.5 | 109.05 ± 9.93 |
 
-This shows that running the native binary, as expected, is the fastest. Not too far behind is WASM, about 5.25 times slower. Next comes the Docker container without network separation at about 55.12 times slower compared to the native binary. And lastly, the Docker container with its own network, a whopping 100.67 times slower than the native binary.
+
+As you can see, the native binary is, as expected, the fastest. Second is WASM not too far behind, around 5 times slower. Third is Podman, now nearing 50 times slower execution than the native binary. And lastly Docker, reaching a whopping 100 times the native binary's execution time when sandboxing its network.
