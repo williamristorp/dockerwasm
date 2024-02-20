@@ -38,39 +38,12 @@ podman build -t dockerwasm .
 
 ## Running
 
-Run native:
-
 ```bash
 cat /etc/dictionaries-common/words | target/release/dockerwasm
-```
-
-Run WASM:
-
-```bash
 cat /etc/dictionaries-common/words | wasmtime target/wasm32-wasi/release/dockerwasm.wasm
-```
-
-Run Docker (simple):
-
-```bash
 cat /etc/dictionaries-common/words | docker run --rm -i dockerwasm
-```
-
-Run Docker (host network):
-
-```bash
 cat /etc/dictionaries-common/words | docker run --net=host --rm -i dockerwasm
-```
-
-Run Podman (simple):
-
-```bash
 cat /etc/dictionaries-common/words | podman run --rm -i dockerwasm
-```
-
-Run Podman (host network):
-
-```bash
 cat /etc/dictionaries-common/words | podman run --net=host --rm -i dockerwasm
 ```
 
